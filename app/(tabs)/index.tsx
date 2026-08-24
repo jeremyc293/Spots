@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Alert,
   StyleSheet,
@@ -11,7 +11,7 @@ import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
 
 import {
-  getParkingLocations,
+  getParkingLocationsInArea,
   getParkingOccupancy,
 } from "../../services/parkingApi";
 
@@ -45,31 +45,23 @@ export default function HomeScreen() {
     longitudeDelta: 0.01,
   });
 
-  async function loadParkingData() {
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  async function loadParkingData(region: Region) {
     try {
-      const occupancyData = await getParkingOccupancy();
+      const locationData =
+        await getParkingLocationsInArea(region);
 
-      const latestSpaces: any[] = [];
-
-      occupancyData.forEach((parking: any) => {
-        const alreadyAdded = latestSpaces.find(
-          (spot) => spot.spaceid === parking.spaceid
-        );
-
-        if (!alreadyAdded) {
-          latestSpaces.push(parking);
-        }
-      });
-
-      const spaceIds = latestSpaces.map(
-        (parking) => parking.spaceid
+      const spaceIds = locationData.map(
+        (location: any) => location.spaceid
       );
 
-      const locationData = await getParkingLocations(spaceIds);
+      const occupancyData =
+        await getParkingOccupancy(spaceIds);
 
       const spots: ParkingSpot[] = [];
 
-      latestSpaces.forEach((parking: any) => {
+      occupancyData.forEach((parking: any) => {
         const location = locationData.find(
           (item: any) => item.spaceid === parking.spaceid
         );
@@ -91,7 +83,7 @@ export default function HomeScreen() {
 
       setParkingSpots(spots);
 
-      console.log("Vacant parking spots:", spots);
+      console.log("Nearby vacant spots:", spots);
     } catch (error) {
       console.log("Parking error:", error);
     }
@@ -108,27 +100,22 @@ export default function HomeScreen() {
 
       setLocationPermission(true);
 
-      const location = await Location.getCurrentPositionAsync({});
+      const location =
+        await Location.getCurrentPositionAsync({});
 
       setUserLocation(location);
 
-      setMapRegion({
+      const region = {
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
         latitudeDelta: 0.01,
         longitudeDelta: 0.01,
-      });
+      };
+
+      setMapRegion(region);
     }
 
     getLocation();
-
-    loadParkingData();
-
-    const interval = setInterval(() => {
-      loadParkingData();
-    }, 15000);
-
-    return () => clearInterval(interval);
   }, []);
 
   async function handleSearch() {
@@ -136,7 +123,8 @@ export default function HomeScreen() {
       return;
     }
 
-    const results = await Location.geocodeAsync(address);
+    const results =
+      await Location.geocodeAsync(address);
 
     if (results.length === 0) {
       Alert.alert("Address not found");
@@ -150,12 +138,28 @@ export default function HomeScreen() {
 
     setSearchedLocation(location);
 
-    setMapRegion({
+    const newRegion = {
       latitude: location.latitude,
       longitude: location.longitude,
       latitudeDelta: 0.01,
       longitudeDelta: 0.01,
-    });
+    };
+
+    setMapRegion(newRegion);
+
+    loadParkingData(newRegion);
+  }
+
+  function handleMapMove(region: Region) {
+    setMapRegion(region);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      loadParkingData(region);
+    }, 1000);
   }
 
   return (
@@ -174,14 +178,16 @@ export default function HomeScreen() {
           style={styles.searchButton}
           onPress={handleSearch}
         >
-          <Text style={styles.searchButtonText}>Search</Text>
+          <Text style={styles.searchButtonText}>
+            Search
+          </Text>
         </TouchableOpacity>
       </View>
 
       <MapView
         style={styles.map}
         region={mapRegion}
-        onRegionChangeComplete={setMapRegion}
+        onRegionChangeComplete={handleMapMove}
       >
         {userLocation && (
           <Marker
