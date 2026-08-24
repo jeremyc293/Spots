@@ -195,6 +195,25 @@ export default function HomeScreen() {
     }, 1500);
   }
 
+  function recenterMap() {
+    if (!userLocation) {
+      Alert.alert("Current location is not available yet.");
+      return;
+    }
+
+    const region = {
+      latitude: userLocation.coords.latitude,
+      longitude: userLocation.coords.longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
+    };
+
+    setMapRegion(region);
+    currentRegionRef.current = region;
+
+    loadParkingData(region);
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Spots</Text>
@@ -213,6 +232,21 @@ export default function HomeScreen() {
         >
           <Text style={styles.searchButtonText}>
             Search
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.infoContainer}>
+        <Text style={styles.spotCount}>
+          {parkingSpots.length} vacant spots nearby
+        </Text>
+
+        <TouchableOpacity
+          style={styles.locationButton}
+          onPress={recenterMap}
+        >
+          <Text style={styles.locationButtonText}>
+            Recenter on Me
           </Text>
         </TouchableOpacity>
       </View>
@@ -302,6 +336,30 @@ const styles = StyleSheet.create({
 
   searchButtonText: {
     color: "#ffffff",
+    fontWeight: "bold",
+  },
+
+  infoContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    marginBottom: 10,
+  },
+
+  spotCount: {
+    fontSize: 15,
+    fontWeight: "bold",
+  },
+
+  locationButton: {
+    backgroundColor: "#eeeeee",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+
+  locationButtonText: {
     fontWeight: "bold",
   },
 
