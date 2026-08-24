@@ -9,7 +9,11 @@ import {
 } from "react-native";
 import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
-import { getParkingOccupancy } from "../../services/parkingApi";
+
+import {
+  getParkingLocations,
+  getParkingOccupancy,
+} from "../../services/parkingApi";
 
 export default function HomeScreen() {
   const [locationPermission, setLocationPermission] = useState(false);
@@ -33,9 +37,11 @@ export default function HomeScreen() {
 
   async function loadParkingData() {
     try {
-      const data = await getParkingOccupancy();
+      const occupancyData = await getParkingOccupancy();
+      const locationData = await getParkingLocations();
 
-      console.log("Parking data:", data);
+      console.log("Occupancy:", occupancyData);
+      console.log("Locations:", locationData);
     } catch (error) {
       console.log("Parking error:", error);
     }
