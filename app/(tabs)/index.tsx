@@ -7,7 +7,11 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker, Region } from "react-native-maps";
+import MapView, {
+  Callout,
+  Marker,
+  Region,
+} from "react-native-maps";
 import * as Location from "expo-location";
 
 import {
@@ -21,6 +25,7 @@ type ParkingSpot = {
   longitude: number;
   blockface: string;
   occupancystate: string;
+  eventtime: string;
 };
 
 export default function HomeScreen() {
@@ -90,6 +95,7 @@ export default function HomeScreen() {
             blockface:
               location.blockface || "Unknown street",
             occupancystate: parking.occupancystate,
+            eventtime: parking.eventtime || "Unknown",
           });
         }
       });
@@ -214,6 +220,16 @@ export default function HomeScreen() {
     loadParkingData(region);
   }
 
+  function formatTime(time: string) {
+    if (time === "Unknown") {
+      return "Unknown";
+    }
+
+    const date = new Date(time);
+
+    return date.toLocaleString();
+  }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Spots</Text>
@@ -280,10 +296,28 @@ export default function HomeScreen() {
               latitude: spot.latitude,
               longitude: spot.longitude,
             }}
-            title="Available Parking"
-            description={spot.blockface}
             pinColor="green"
-          />
+          >
+            <Callout>
+              <View style={styles.callout}>
+                <Text style={styles.calloutTitle}>
+                  Available Parking
+                </Text>
+
+                <Text style={styles.calloutText}>
+                  {spot.blockface}
+                </Text>
+
+                <Text style={styles.calloutText}>
+                  Space: {spot.spaceid}
+                </Text>
+
+                <Text style={styles.calloutText}>
+                  Updated: {formatTime(spot.eventtime)}
+                </Text>
+              </View>
+            </Callout>
+          </Marker>
         ))}
       </MapView>
 
@@ -370,5 +404,21 @@ const styles = StyleSheet.create({
   permissionText: {
     textAlign: "center",
     padding: 12,
+  },
+
+  callout: {
+    width: 220,
+    padding: 8,
+  },
+
+  calloutTitle: {
+    fontSize: 16,
+    fontWeight: "bold",
+    marginBottom: 5,
+  },
+
+  calloutText: {
+    fontSize: 13,
+    marginBottom: 3,
   },
 });
