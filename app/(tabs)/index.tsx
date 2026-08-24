@@ -14,10 +14,7 @@ import MapView, {
 } from "react-native-maps";
 import * as Location from "expo-location";
 
-import {
-  getParkingLocationsInArea,
-  getParkingOccupancy,
-} from "../../services/parkingApi";
+import { getParkingData } from "../../services/parking/parkingService";
 
 type ParkingSpot = {
   spaceid: string;
@@ -66,15 +63,11 @@ export default function HomeScreen() {
     loadingRef.current = true;
 
     try {
-      const locationData =
-        await getParkingLocationsInArea(region);
+      const { locations, occupancy } =
+        await getParkingData(region);
 
-      const spaceIds = locationData.map(
-        (location: any) => location.spaceid
-      );
-
-      const occupancyData =
-        await getParkingOccupancy(spaceIds);
+      const locationData = locations;
+      const occupancyData = occupancy;
 
       const spots: ParkingSpot[] = [];
 
@@ -323,8 +316,7 @@ export default function HomeScreen() {
 
       {!locationPermission && (
         <Text style={styles.permissionText}>
-          Location permission is needed to find
-          spots near you.
+          Location permission is needed to find spots near you.
         </Text>
       )}
     </View>

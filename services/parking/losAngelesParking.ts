@@ -1,6 +1,6 @@
 import { Region } from "react-native-maps";
 
-export async function getParkingLocationsInArea(region: Region) {
+export async function getLAParkingLocations(region: Region) {
   const north = region.latitude + region.latitudeDelta / 2;
   const south = region.latitude - region.latitudeDelta / 2;
   const east = region.longitude + region.longitudeDelta / 2;
@@ -16,20 +16,24 @@ export async function getParkingLocationsInArea(region: Region) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error("Failed to load parking locations");
+    throw new Error("Failed to load LA parking locations");
   }
 
   return await response.json();
 }
 
-export async function getParkingOccupancy(spaceIds: string[]) {
+export async function getLAParkingOccupancy(spaceIds: string[]) {
   if (spaceIds.length === 0) {
     return [];
   }
 
-  const ids = spaceIds.map((id) => `'${id}'`).join(",");
+  const ids = spaceIds
+    .map((id) => `'${id}'`)
+    .join(",");
 
-  const where = encodeURIComponent(`spaceid in(${ids})`);
+  const where = encodeURIComponent(
+    `spaceid in(${ids})`
+  );
 
   const url =
     `https://data.lacity.org/resource/e7h6-4a3e.json?$where=${where}`;
@@ -37,7 +41,7 @@ export async function getParkingOccupancy(spaceIds: string[]) {
   const response = await fetch(url);
 
   if (!response.ok) {
-    throw new Error("Failed to load parking occupancy");
+    throw new Error("Failed to load LA parking occupancy");
   }
 
   return await response.json();
