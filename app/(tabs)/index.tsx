@@ -7,19 +7,39 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker } from "react-native-maps";
+import MapView, { Marker, Region } from "react-native-maps";
 import * as Location from "expo-location";
+import { getParkingOccupancy } from "../../services/parkingApi";
 
 export default function HomeScreen() {
   const [locationPermission, setLocationPermission] = useState(false);
+
   const [userLocation, setUserLocation] =
     useState<Location.LocationObject | null>(null);
 
   const [address, setAddress] = useState("");
+
   const [searchedLocation, setSearchedLocation] = useState<{
     latitude: number;
     longitude: number;
   } | null>(null);
+
+  const [mapRegion, setMapRegion] = useState<Region>({
+    latitude: 40.7128,
+    longitude: -74.006,
+    latitudeDelta: 0.01,
+    longitudeDelta: 0.01,
+  });
+
+  async function loadParkingData() {
+    try {
+      const data = await getParkingOccupancy();
+
+      console.log("Parking data:", data);
+    } catch (error) {
+      console.log("Parking error:", error);
+    }
+  }
 
   useEffect(() => {
     async function getLocation() {
@@ -35,9 +55,17 @@ export default function HomeScreen() {
       const location = await Location.getCurrentPositionAsync({});
 
       setUserLocation(location);
+
+      setMapRegion({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
+      });
     }
 
     getLocation();
+    loadParkingData();
   }, []);
 
   async function handleSearch() {
@@ -52,23 +80,20 @@ export default function HomeScreen() {
       return;
     }
 
-    setSearchedLocation({
+    const location = {
       latitude: results[0].latitude,
       longitude: results[0].longitude,
+    };
+
+    setSearchedLocation(location);
+
+    setMapRegion({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      latitudeDelta: 0.01,
+      longitudeDelta: 0.01,
     });
   }
-
-  const mapLocation =
-    searchedLocation ||
-    (userLocation
-      ? {
-          latitude: userLocation.coords.latitude,
-          longitude: userLocation.coords.longitude,
-        }
-      : {
-          latitude: 40.7128,
-          longitude: -74.006,
-        });
 
   return (
     <View style={styles.container}>
@@ -92,12 +117,8 @@ export default function HomeScreen() {
 
       <MapView
         style={styles.map}
-        region={{
-          latitude: mapLocation.latitude,
-          longitude: mapLocation.longitude,
-          latitudeDelta: 0.01,
-          longitudeDelta: 0.01,
-        }}
+        region={mapRegion}
+        onRegionChangeComplete={setMapRegion}
       >
         {userLocation && (
           <Marker
