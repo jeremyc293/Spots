@@ -15,6 +15,14 @@ import {
   getParkingOccupancy,
 } from "../../services/parkingApi";
 
+type ParkingSpot = {
+  spaceid: string;
+  latitude: number;
+  longitude: number;
+  blockface: string;
+  occupancystate: string;
+};
+
 export default function HomeScreen() {
   const [locationPermission, setLocationPermission] = useState(false);
 
@@ -28,6 +36,8 @@ export default function HomeScreen() {
     longitude: number;
   } | null>(null);
 
+  const [parkingSpots, setParkingSpots] = useState<ParkingSpot[]>([]);
+
   const [mapRegion, setMapRegion] = useState<Region>({
     latitude: 40.7128,
     longitude: -74.006,
@@ -38,10 +48,53 @@ export default function HomeScreen() {
   async function loadParkingData() {
     try {
       const occupancyData = await getParkingOccupancy();
-      const locationData = await getParkingLocations();
 
-      console.log("Occupancy:", occupancyData);
-      console.log("Locations:", locationData);
+      // Remove duplicate space IDs.
+      // Since the API is ordered newest first,
+      // this keeps the newest status for each space.
+      const latestSpaces: any[] = [];
+
+      occupancyData.forEach((parking: any) => {
+        const alreadyAdded = latestSpaces.find(
+          (spot) => spot.spaceid === parking.spaceid
+        );
+
+        if (!alreadyAdded) {
+          latestSpaces.push(parking);
+        }
+      });
+
+      const spaceIds = latestSpaces.map(
+        (parking) => parking.spaceid
+      );
+
+      const locationData = await getParkingLocations(spaceIds);
+
+      const spots: ParkingSpot[] = [];
+
+      latestSpaces.forEach((parking: any) => {
+        const location = locationData.find(
+          (item: any) => item.spaceid === parking.spaceid
+        );
+
+        if (
+          location &&
+          location.latlng &&
+          parking.occupancystate === "VACANT"
+        ) {
+          spots.push({
+            spaceid: parking.spaceid,
+            latitude: Number(location.latlng.latitude),
+            longitude: Number(location.latlng.longitude),
+            blockface: location.blockface || "Unknown street",
+            occupancystate: parking.occupancystate,
+          });
+        }
+      });
+
+      setParkingSpots(spots);
+
+      console.log("Vacant parking spots:", spots);
     } catch (error) {
       console.log("Parking error:", error);
     }
@@ -142,6 +195,19 @@ export default function HomeScreen() {
             title="Searched Location"
           />
         )}
+
+        {parkingSpots.map((spot) => (
+          <Marker
+            key={spot.spaceid}
+            coordinate={{
+              latitude: spot.latitude,
+              longitude: spot.longitude,
+            }}
+            title="Available Parking"
+            description={spot.blockface}
+            pinColor="green"
+          />
+        ))}
       </MapView>
 
       {!locationPermission && (
