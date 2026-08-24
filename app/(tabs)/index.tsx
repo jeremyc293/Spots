@@ -45,9 +45,21 @@ export default function HomeScreen() {
     longitudeDelta: 0.01,
   });
 
-  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timeoutRef =
+    useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const currentRegionRef = useRef<Region>(mapRegion);
+
+  const loadingRef = useRef(false);
 
   async function loadParkingData(region: Region) {
+    if (loadingRef.current) {
+      console.log("Parking request skipped");
+      return;
+    }
+
+    loadingRef.current = true;
+
     try {
       const locationData =
         await getParkingLocationsInArea(region);
@@ -75,7 +87,8 @@ export default function HomeScreen() {
             spaceid: parking.spaceid,
             latitude: Number(location.latlng.latitude),
             longitude: Number(location.latlng.longitude),
-            blockface: location.blockface || "Unknown street",
+            blockface:
+              location.blockface || "Unknown street",
             occupancystate: parking.occupancystate,
           });
         }
@@ -83,9 +96,14 @@ export default function HomeScreen() {
 
       setParkingSpots(spots);
 
-      console.log("Nearby vacant spots:", spots);
+      console.log(
+        "Nearby vacant spots:",
+        spots.length
+      );
     } catch (error) {
       console.log("Parking error:", error);
+    } finally {
+      loadingRef.current = false;
     }
   }
 
@@ -113,9 +131,22 @@ export default function HomeScreen() {
       };
 
       setMapRegion(region);
+      currentRegionRef.current = region;
     }
 
     getLocation();
+
+    const interval = setInterval(() => {
+      loadParkingData(currentRegionRef.current);
+    }, 60000);
+
+    return () => {
+      clearInterval(interval);
+
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
   }, []);
 
   async function handleSearch() {
@@ -146,12 +177,14 @@ export default function HomeScreen() {
     };
 
     setMapRegion(newRegion);
+    currentRegionRef.current = newRegion;
 
-    loadParkingData(newRegion);
+    await loadParkingData(newRegion);
   }
 
   function handleMapMove(region: Region) {
     setMapRegion(region);
+    currentRegionRef.current = region;
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -159,7 +192,7 @@ export default function HomeScreen() {
 
     timeoutRef.current = setTimeout(() => {
       loadParkingData(region);
-    }, 1000);
+    }, 1500);
   }
 
   return (
@@ -222,7 +255,8 @@ export default function HomeScreen() {
 
       {!locationPermission && (
         <Text style={styles.permissionText}>
-          Location permission is needed to find spots near you.
+          Location permission is needed to find
+          spots near you.
         </Text>
       )}
     </View>
