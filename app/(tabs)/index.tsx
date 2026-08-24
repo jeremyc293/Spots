@@ -49,9 +49,6 @@ export default function HomeScreen() {
     try {
       const occupancyData = await getParkingOccupancy();
 
-      // Remove duplicate space IDs.
-      // Since the API is ordered newest first,
-      // this keeps the newest status for each space.
       const latestSpaces: any[] = [];
 
       occupancyData.forEach((parking: any) => {
@@ -124,7 +121,14 @@ export default function HomeScreen() {
     }
 
     getLocation();
+
     loadParkingData();
+
+    const interval = setInterval(() => {
+      loadParkingData();
+    }, 15000);
+
+    return () => clearInterval(interval);
   }, []);
 
   async function handleSearch() {
