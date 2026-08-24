@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import {
+  Alert,
   StyleSheet,
   Text,
   TextInput,
@@ -15,6 +16,10 @@ export default function HomeScreen() {
     useState<Location.LocationObject | null>(null);
 
   const [address, setAddress] = useState("");
+  const [searchedLocation, setSearchedLocation] = useState<{
+    latitude: number;
+    longitude: number;
+  } | null>(null);
 
   useEffect(() => {
     async function getLocation() {
@@ -35,9 +40,35 @@ export default function HomeScreen() {
     getLocation();
   }, []);
 
-  function handleSearch() {
-    console.log("Searching for:", address);
+  async function handleSearch() {
+    if (!address.trim()) {
+      return;
+    }
+
+    const results = await Location.geocodeAsync(address);
+
+    if (results.length === 0) {
+      Alert.alert("Address not found");
+      return;
+    }
+
+    setSearchedLocation({
+      latitude: results[0].latitude,
+      longitude: results[0].longitude,
+    });
   }
+
+  const mapLocation =
+    searchedLocation ||
+    (userLocation
+      ? {
+          latitude: userLocation.coords.latitude,
+          longitude: userLocation.coords.longitude,
+        }
+      : {
+          latitude: 40.7128,
+          longitude: -74.006,
+        });
 
   return (
     <View style={styles.container}>
@@ -61,21 +92,12 @@ export default function HomeScreen() {
 
       <MapView
         style={styles.map}
-        region={
-          userLocation
-            ? {
-                latitude: userLocation.coords.latitude,
-                longitude: userLocation.coords.longitude,
-                latitudeDelta: 0.01,
-                longitudeDelta: 0.01,
-              }
-            : {
-                latitude: 40.7128,
-                longitude: -74.006,
-                latitudeDelta: 0.05,
-                longitudeDelta: 0.05,
-              }
-        }
+        region={{
+          latitude: mapLocation.latitude,
+          longitude: mapLocation.longitude,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
+        }}
       >
         {userLocation && (
           <Marker
@@ -84,6 +106,13 @@ export default function HomeScreen() {
               longitude: userLocation.coords.longitude,
             }}
             title="Your Location"
+          />
+        )}
+
+        {searchedLocation && (
+          <Marker
+            coordinate={searchedLocation}
+            title="Searched Location"
           />
         )}
       </MapView>
